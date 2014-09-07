@@ -3,21 +3,31 @@ require 'redis'
 require 'ruby-osc'
 require 'json'
 
-require File.join([File.dirname(__FILE__), 'handlers', 'test_handler'])
-require File.join([File.dirname(__FILE__), 'handlers', 'test2_handler'])
+require 'bernstein/persistence'
+require 'bernstein/osc_connection'
+require 'bernstein/message'
+require 'bernstein/client'
+require 'bernstein/server'
 
-# ISIS = Interactive Sound Installation System?
-module Isis
-  include OSC 
 
+#TODO forget about handlers for now
+#require File.join([File.dirname(__FILE__), 'handlers', 'test_handler'])
+#require File.join([File.dirname(__FILE__), 'handlers', 'test2_handler'])
+
+module Bernstein
+##################################### old code!
+
+  #TODO make this not a global variable
   RedisClient = Redis.new
 
+  # TODO - make this private
   def new_id
     # generate new unique id
     # TODO improve this to make it more unique and shorter
     Time.now.to_i.to_s
   end
 
+  # TODO change interface - accept only message string and parameter list
   def save_new_request(handler_name, parameters = {})
     # put request in queue for deferred processing
     # returns id to track
@@ -36,6 +46,7 @@ module Isis
     RedisClient.get "#{id}_status"
   end
 
+  # TODO refactor, forget about handlers for now
   def process_queued_requests
     requests = RedisClient.smembers "queued_requests"
     @handlers ||= {}
@@ -90,6 +101,7 @@ module Isis
 
   #############################
   # TODO: setup server here?#
+  # TODO: change state to awknowledged
   def handle_request_awknowledgement(id)
     RedisClient.set "#{id}_status", "processed"
   end
