@@ -1,35 +1,37 @@
 module Bernstein
   class Message
-    attr_accessor :id, :address, :args
+    attr_reader :id, :address, :args
 
-    #TODO make second constructor for building messages from redis
-    def initialize message_string = ''
-      @id = new_id
-      @address, @args = parse_message_string(message_string)
+    def initialize options = {}
+      @id, @address, @args = options[:id], options[:address], options[:args]
+      @is_saved = options[:is_saved] || false
+    end
+
+    def self.build message_string
+      address, args = parse_message_string(message_string)
+      Message.new id: new_id, address: address, args: args
     end
 
     def save!
-      Persistence.add_to_queue(@id, {'address' => @address, 'args' => @args})
+      unless @is_saved
+        Persistence.add_to_queue(self)
+        @is_saved = true
+      end
     end
 
     def send!
-      # TODO try block?
-      send_osc(id,method, *parameters)
-      Persistence.mark_as_sent(@id)
+      #OSCConnection.send(@address, @args)
+      Persistence.mark_as_sent(self)
     end
 
     protected
-    def new_id
-      Time.now.to_i.to_s
+    def self.new_id
+      Time.now.to_f.to_s.delete('.')
     end
 
-    def parse_message_string message_string
+    def self.parse_message_string message_string
       message_array = message_string.split
       [message_array.shift, message_array]
-    end
-
-    def send_osc
-      OSCConnection.send(@address, @args)
     end
   end
 end

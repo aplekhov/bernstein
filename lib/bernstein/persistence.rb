@@ -7,11 +7,11 @@ module Bernstein
     SENT_STATE = 'sent'
     AWK_STATE = 'awknowledged'
 
-    def self.add_to_queue(message_id, message_data)
+    def self.add_to_queue(message)
       RedisClient.multi do
-        RedisClient.sadd REQUEST_QUEUE, message_id
-        RedisClient.setex message_id, KEY_EXPIRY, message_data.merge('message_id' => message_id).to_json
-        RedisClient.setex status_key(message_id), KEY_EXPIRY, QUEUED_STATE
+        RedisClient.sadd REQUEST_QUEUE, message.id
+        RedisClient.setex message.id, KEY_EXPIRY, {'address' => message.address, 'args' => message.args}.to_json
+        RedisClient.setex status_key(message.id), KEY_EXPIRY, QUEUED_STATE
       end
     end
 
@@ -25,7 +25,7 @@ module Bernstein
       unless request_ids.empty?
         requests = RedisClient.mget(request_ids).compact
         unless requests.empty?
-          requests.map!{|r| Message.new(JSON.parse(r)})
+          requests.map!{|r| Message.new(JSON.parse(r))}
         end
         if requests.size < request_ids.size
           #TODO
