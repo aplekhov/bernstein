@@ -16,7 +16,7 @@ module Bernstein
 
     def save!
       unless @is_saved
-        @@persister.add_to_queue(self)
+        @@persister.add(self)
         @is_saved = true
       end
     end
@@ -26,6 +26,11 @@ module Bernstein
       @@persister.mark_as_sent self
     end
 
+    def ==(other)
+      (self.id == other.id) && (self.address == other.address) &&
+        (self.args == other.args)
+    end
+    
     protected
     def self.new_id
       Time.now.to_f.to_s.delete('.')

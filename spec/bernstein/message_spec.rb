@@ -6,7 +6,7 @@ class DummyPersister
     @queue, @sent_messages = [],[]
   end
 
-  def add_to_queue(message)
+  def add(message)
     @queue << message
   end
 
@@ -62,6 +62,12 @@ describe Bernstein::Message do
       expect(message.id).to eq(id)
       expect(message.address).to eq(address)
       expect(message.args).to eq(args)
+    end
+
+    it "should be equal to another message with the same id, args and address" do
+      message1 = Bernstein::Message.build("/test 1 2 3") 
+      message2 = Bernstein::Message.new(id: message1.id, address: message1.address, args: message1.args)
+      expect(message1).to eq(message2)
     end
   end
 
