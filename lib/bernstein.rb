@@ -1,9 +1,9 @@
 require 'rubygems'
-require 'redis'
 require 'ruby-osc'
 require 'json'
 
 require 'bernstein/persistence'
+require 'bernstein/redis_queue'
 require 'bernstein/osc_connection'
 require 'bernstein/message'
 require 'bernstein/client'

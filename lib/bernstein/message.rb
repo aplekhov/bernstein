@@ -1,6 +1,8 @@
 module Bernstein
   class Message
     attr_reader :id, :address, :args
+    @@persister = RedisQueue
+    @@osc_connection = OSCConnection
 
     def initialize options = {}
       @id, @address, @args = options[:id], options[:address], options[:args]
@@ -14,14 +16,14 @@ module Bernstein
 
     def save!
       unless @is_saved
-        Persistence.add_to_queue(self)
+        @@persister.add_to_queue(self)
         @is_saved = true
       end
     end
 
     def send!
-      #OSCConnection.send(@address, @args)
-      Persistence.mark_as_sent(self)
+      @@osc_connection.send self
+      @@persister.mark_as_sent self
     end
 
     protected
