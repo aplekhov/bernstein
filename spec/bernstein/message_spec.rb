@@ -67,7 +67,9 @@ describe Bernstein::Message do
     it "should be equal to another message with the same id, args and address" do
       message1 = Bernstein::Message.build("/test 1 2 3") 
       message2 = Bernstein::Message.new(id: message1.id, address: message1.address, args: message1.args)
+      message3 = Bernstein::Message.new(id: '123', address: message1.address, args: message1.args)
       expect(message1).to eq(message2)
+      expect(message1).to_not eq(message3)
     end
   end
 

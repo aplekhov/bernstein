@@ -5,7 +5,7 @@ module Bernstein
     include Persistence
     QUEUE_SET = "bernstein_queued_messages"
     # TODO make configurable
-    KEY_EXPIRY = 300
+    KEY_EXPIRY = 1
     # TODO make configurable options
     @@redis = Redis.new
 
@@ -23,19 +23,19 @@ module Bernstein
     end
 
     def self.queued_messages
-      request_ids = @@redis.smembers QUEUE_SET
-      unless request_ids.empty?
-        requests = @@redis.mget(request_ids).compact
-        unless requests.empty?
-          requests.map!{|r| JSON.parse(r)}
-          requests.map!{|r| Bernstein::Message.new(id: r['id'], address: r['address'], args: r['args'])} 
+      queued_message_ids = @@redis.smembers QUEUE_SET
+      messages = []
+      unless queued_message_ids.empty?
+        messages = @@redis.mget(queued_message_ids).compact
+        unless messages.empty?
+          messages.map!{|r| JSON.parse(r)}
+          messages.map!{|r| Message.new(id: r['id'], address: r['address'], args: r['args'])} 
         end
-        if requests.size < request_ids.size
-          #TODO
-          clean_up_queue
+        if messages.size < queued_message_ids.size
+          clean_up_queue(queued_message_ids - messages.map{|m| m.id})
         end
       end
-      requests
+      messages
     end
 
     def self.clear
@@ -59,8 +59,10 @@ module Bernstein
       "#{id}_status"
     end
 
-    def self.clean_up_queue
-      #TODO
+    def self.clean_up_queue(ids_to_remove)
+      @@redis.pipelined do
+        ids_to_remove.each{|id| @@redis.srem QUEUE_SET, id}
+      end
     end
   end
 end
