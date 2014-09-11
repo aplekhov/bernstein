@@ -1,6 +1,4 @@
 require 'rubygems'
-require 'ruby-osc'
-require 'json'
 
 require 'bernstein/persistence'
 require 'bernstein/redis_queue'
@@ -17,58 +15,6 @@ require 'bernstein/server'
 module Bernstein
 ##################################### old code!
 
-  #TODO make this not a global variable
-  RedisClient = Redis.new
-
-  # TODO - make this private
-  def new_id
-    # generate new unique id
-    # TODO improve this to make it more unique and shorter
-    Time.now.to_i.to_s
-  end
-
-  # TODO change interface - accept only message string and parameter list
-  def save_new_request(handler_name, parameters = {})
-    # put request in queue for deferred processing
-    # returns id to track
-    id = new_id
-    data = {'handler' => handler_name, 'id' => id, 'params' => parameters}
-    RedisClient.multi do
-      RedisClient.sadd "queued_requests", id
-      RedisClient.setex id, 300, data.to_json
-      RedisClient.setex "#{id}_status", 300, "queued"
-    end
-    return id
-  end
-
-  def request_status(id)
-    # returns status of request by id
-    RedisClient.get "#{id}_status"
-  end
-
-  # TODO refactor, forget about handlers for now
-  def process_queued_requests
-    requests = RedisClient.smembers "queued_requests"
-    @handlers ||= {}
-    unless requests.empty?
-      requests = RedisClient.mget(requests).compact
-      # TODO: clean up expired queued requests 
-      unless requests.empty?
-        requests.map!{|r| JSON.parse(r)}
-        requests_by_handler = requests.group_by{|r| r['handler']}
-        requests_by_handler.keys.each do |handler_name|
-          handler = @handlers[handler_name]
-          if handler.nil?
-            handler_class = Object.const_get handler_name
-            handler = handler_class.new
-            @handlers[handler_name] = handler
-          end
-          handler.process_requests(requests_by_handler[handler_name], self)
-        end
-      end
-    end
-  end
-
   # called by handlers #####
   def merge_requests(ids, method, *parameters)
     merged_id = new_id
@@ -80,29 +26,5 @@ module Bernstein
       RedisClient.mset ids.map{|id| ["#{id}_status", "merged_#{merged_id}"]}.flatten
     end
     RedisClient.del ids
-  end
-
-  def send_request(id, method, *parameters)
-    # TODO try block?
-    send_osc(id,method, *parameters)
-    RedisClient.multi do
-      RedisClient.srem "queued_requests", id
-      RedisClient.set "#{id}_status", "sent"
-    end
-    RedisClient.del id
-  end
-
-  def send_osc(id, method, *parameters)
-    # TODO make this configurable
-    # TODO allow a handler to be able to send a multi-message bundle
-    client = Client.new 8000
-    client.send Bundle.new(nil, Message.new(method,*parameters), Message.new('/request_id', id))
-  end
-
-  #############################
-  # TODO: setup server here?#
-  # TODO: change state to awknowledged
-  def handle_request_awknowledgement(id)
-    RedisClient.set "#{id}_status", "processed"
   end
 end

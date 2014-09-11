@@ -26,7 +26,7 @@ class DummyOSCConnection
     @fail_send, @sent_messages = false, []
   end
 
-  def send message
+  def send_message message
     if @fail_send
       throw "something went wrong"
     else

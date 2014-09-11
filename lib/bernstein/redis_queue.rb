@@ -1,4 +1,5 @@
 require 'redis'
+require 'json'
 
 module Bernstein
   class RedisQueue
@@ -8,6 +9,7 @@ module Bernstein
     KEY_EXPIRY = 1
     # TODO make configurable options
     @@redis = Redis.new
+    # TODO add redis namespacing
 
     def self.add(message)
       @@redis.multi do

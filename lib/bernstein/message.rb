@@ -22,7 +22,7 @@ module Bernstein
     end
 
     def send!
-      @@osc_connection.send self
+      @@osc_connection.send_message self
       @@persister.mark_as_sent self
     end
 

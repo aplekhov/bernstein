@@ -1,8 +1,8 @@
 module Bernstein
   class Client
     def self.send_message(message)
-      msg = Message.new(message)
-      msg.save
+      msg = Message.build(message)
+      msg.save!
       msg.id
     end
 
