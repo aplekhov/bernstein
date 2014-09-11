@@ -1,7 +1,7 @@
 require 'helper'
 
 def redis_connection
-  Bernstein::RedisQueue.class_variable_get('@@redis')
+  Bernstein::RedisQueue.instance_variable_get('@redis')
 end
 
 describe Bernstein::RedisQueue do
