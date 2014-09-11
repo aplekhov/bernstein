@@ -14,6 +14,18 @@ module Bernstein
       Message.new id: new_id, address: address, args: args
     end
 
+    def self.get_status(id)
+      #TODO
+    end
+
+    def self.get_queued_messages
+      #TODO
+    end
+
+    def self.set_as_awknowledged(id)
+      #TODO
+    end
+
     def save!
       unless @is_saved
         @@persister.add(self)

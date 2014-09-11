@@ -45,20 +45,30 @@ module Bernstein
     end
 
     def self.mark_as_sent(id)
-      @redis.multi do
+      update_status(id, STATES[:sent]) do
         @redis.srem QUEUE_SET, id
-        @redis.set status_key(id), STATES[:sent]
       end
       @redis.del id
     end
 
     def self.mark_as_awknowledged(id)
-      @redis.set status_key(id), STATES[:awked]
+      update_status id, STATES[:awked]
     end
 
     protected
     def self.status_key(id)
       "#{id}_status"
+    end
+
+    def self.update_status(id, status)
+      if block_given?
+        @redis.multi do
+          yield
+          @redis.set status_key(id), status
+        end
+      else
+        @redis.set status_key(id), status
+      end
     end
 
     def self.clean_up_queue(ids_to_remove)
