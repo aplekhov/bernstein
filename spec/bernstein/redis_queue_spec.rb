@@ -49,6 +49,10 @@ describe Bernstein::RedisQueue do
   end
 
   describe "marking and requesting status" do
+    it "should return not yet queued status for unknown messages" do
+      expect(Bernstein::RedisQueue.status('123456')).to eq(Bernstein::Persistence::STATES[:not_yet_queued])
+    end
+
     it "should set new messages' status to queued" do
       Bernstein::RedisQueue.add(@message)
       expect(Bernstein::RedisQueue.status(@message.id)).to eq(Bernstein::Persistence::STATES[:queued])

@@ -21,7 +21,7 @@ module Bernstein
 
     def self.status(id)
       # returns status of request by id
-      @redis.get status_key(id)
+      (@redis.get status_key(id)) || STATES[:not_yet_queued]
     end
 
     def self.queued_messages
