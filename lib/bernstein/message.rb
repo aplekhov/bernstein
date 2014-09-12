@@ -15,15 +15,19 @@ module Bernstein
     end
 
     def self.get_status(id)
-      #TODO
+      @@persister.status(id)
+    end
+
+    def status
+      @@persister.status(@id)
     end
 
     def self.get_queued_messages
-      #TODO
+      @@persister.queued_messages
     end
 
     def self.set_as_awknowledged(id)
-      #TODO
+      @@persister.mark_as_awknowledged(id)
     end
 
     def save!
@@ -35,7 +39,7 @@ module Bernstein
 
     def send!
       @@osc_connection.send_message self
-      @@persister.mark_as_sent self
+      @@persister.mark_as_sent @id
     end
 
     def ==(other)

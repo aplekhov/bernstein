@@ -1,11 +1,13 @@
+#require 'event_machine'
+
 module Bernstein
   class Server
     def self.process_queued_messages
-      Persistence.queued_messages.each{|m| m.send!}
+      Message.get_queued_messages.each{|m| m.send!}
     end
 
     def self.handle_request_awknowledgement(id)
-      Persistence.mark_as_awknowledged(id)
+      Message.set_as_awknowledged(id)
     end
 
     def self.start
