@@ -1,4 +1,5 @@
 require 'redis'
+require 'redis-namespace'
 require 'json'
 
 module Bernstein
