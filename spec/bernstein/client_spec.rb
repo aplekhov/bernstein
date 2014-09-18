@@ -1,10 +1,6 @@
 require 'helper'
 
 describe Bernstein::Client do
-  describe "initializing" do
-    it "should pass configuration values to persister module"
-  end
-
   describe "sending a message" do
     it "should build the message object and return its id" do
       id = Bernstein::Client.send_message("/synths/4/chord/notes 25 30 10")

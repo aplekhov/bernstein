@@ -3,16 +3,18 @@ require 'ruby-osc'
 module Bernstein
   class OSCConnection
     include OSC
-
-    # TODO make awk mode configurable
-    def self.send_message(message)
-      connection.send Bundle.new(nil, OSC::Message.new(message.address,*message.args), OSC::Message.new('/request_id', message.id))
+  
+    @options = {port: 8000, host: '127.0.0.1', send_message_ids: true}
+    
+    def self.configure!(options = {})
+      @options.merge!(options || {})
+      @connection = OSC::Client.new @options[:port], @options[:host]
     end
 
-    protected
-    def self.connection
-      # TODO make this configurable
-      @connection ||= OSC::Client.new 8000
+    def self.send_message(message)
+      osc_message = OSC::Message.new(message.address,*message.args)
+      osc_message = Bundle.new(nil, osc_message, OSC::Message.new('/message_id', message.id)) if @options[:send_message_ids]
+      connection.send osc_message
     end
   end
 end

@@ -9,8 +9,19 @@ describe Bernstein::RedisQueue do
     @message = Bernstein::Message.build("/test/3 one two three")
   end
 
-  describe "configuration" do
-    it "should load configuration from file"
+  describe "initialization and configuration" do
+    after(:all){Bernstein::RedisQueue.configure!({redis:{}})}
+
+    it "should pass redis options to initialize a new redis connection" do
+      pending "fixing some rspec weirdness"
+      redis_opts = {host: "10.0.1.1", port: 6380, db: 15}
+      expect(Redis).to receive(:new)
+      Bernstein::RedisQueue.configure!({key_expiry: 600, redis: redis_opts})
+    end
+
+    it "should be namespaced" do
+      expect(redis_connection.class).to eq(Redis::Namespace)
+    end
   end
 
   describe "adding a new message" do
@@ -24,19 +35,22 @@ describe Bernstein::RedisQueue do
   end
 
   describe "expired messages" do
+    before(:all) do
+      @key_expiry = 1
+      Bernstein::RedisQueue.configure! key_expiry: @key_expiry
+    end
+
     it "should expire messages based on set expiry times" do
       Bernstein::RedisQueue.add(@message)
       expect(redis_connection.get(@message.id)).to_not be_nil
-      # TODO read from configuration, make test redis config
-      sleep Bernstein::RedisQueue::KEY_EXPIRY + 2
+      sleep @key_expiry + 1
       expect(redis_connection.get(@message.id)).to be_nil
     end
 
     it "should clean up request_queue of unhandled expired messages" do
       Bernstein::RedisQueue.add(@message)
       expect(Bernstein::RedisQueue.queued_messages).to include(@message)
-      # TODO read from configuration, make test redis config
-      sleep Bernstein::RedisQueue::KEY_EXPIRY + 2
+      sleep @key_expiry + 1
       @another_message = Bernstein::Message.build("/test/current 5 6 7")
       Bernstein::RedisQueue.add(@another_message)
       queued_messages = Bernstein::RedisQueue.queued_messages

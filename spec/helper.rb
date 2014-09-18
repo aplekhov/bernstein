@@ -5,3 +5,5 @@ require 'bernstein'
 RSpec.configure do |c|
   c.mock_with :rspec
 end
+
+Bernstein.configure!

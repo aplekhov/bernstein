@@ -5,18 +5,19 @@ require 'json'
 module Bernstein
   class RedisQueue
     include Persistence
-    QUEUE_SET = "bernstein_queued_messages"
-    # TODO make configurable
-    KEY_EXPIRY = 1
-    # TODO make configurable options
-    @redis = Redis.new
-    # TODO add redis namespacing
+    QUEUE_SET = "queued_messages"
+    @options = {key_expiry: 300, redis: {}}
+
+    def self.configure!(options = {})
+      @options.merge!(options || {})
+      @redis = Redis::Namespace.new(:bernstein, :redis => Redis.new(@options[:redis]))
+    end
 
     def self.add(message)
       @redis.multi do
         @redis.sadd QUEUE_SET, message.id
-        @redis.setex message.id, KEY_EXPIRY, {'address' => message.address, 'args' => message.args, 'id' => message.id}.to_json
-        @redis.setex status_key(message.id), KEY_EXPIRY, STATES[:queued]
+        @redis.setex message.id, @options[:key_expiry], {'address' => message.address, 'args' => message.args, 'id' => message.id}.to_json
+        @redis.setex status_key(message.id), @options[:key_expiry], STATES[:queued]
       end
     end
 

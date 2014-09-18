@@ -1,4 +1,4 @@
-#require 'event_machine'
+require 'eventmachine'
 
 module Bernstein
   class Server
