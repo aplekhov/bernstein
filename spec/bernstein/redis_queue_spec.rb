@@ -6,7 +6,7 @@ end
 
 describe Bernstein::RedisQueue do
   before(:each) do
-    @message = Bernstein::Message.build("/test/3 one two three")
+    @message = Bernstein::Message.build("/test/3 1 2.55 4")
   end
 
   describe "initialization and configuration" do
@@ -29,7 +29,7 @@ describe Bernstein::RedisQueue do
       Bernstein::RedisQueue.add(@message)
       data = JSON.parse(redis_connection.get(@message.id))
       expect(data['address']).to eq('/test/3')
-      expect(data['args']).to eq(['one', 'two', 'three'])
+      expect(data['args']).to eq([1.0, 2.55, 4])
       expect(redis_connection.smembers(Bernstein::RedisQueue::QUEUE_SET)).to include(@message.id)
     end
   end

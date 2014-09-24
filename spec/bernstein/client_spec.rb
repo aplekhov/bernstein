@@ -9,7 +9,7 @@ describe Bernstein::Client do
       message = queued_messages.find{|m| m.id == id}
       expect(message).to_not be_nil
       expect(message.address).to eq("/synths/4/chord/notes")
-      expect(message.args).to eq(["25", "30", "10"])
+      expect(message.args).to eq([25.0, 30.0, 10.0])
     end
   end
 

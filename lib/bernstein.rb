@@ -11,5 +11,6 @@ module Bernstein
   def self.configure!(options = {})
     RedisQueue.configure!(options[:redis_queue])
     OSCConnection.configure!(options[:osc_client])
+    Server.configure!(options[:osc_server])
   end
 end

@@ -1,33 +1,40 @@
 require 'eventmachine'
+require 'ruby-osc'
 
 module Bernstein
   class Server
-    def self.process_queued_messages
-      Message.get_queued_messages.each{|m| m.send!}
-    end
-
-    def self.handle_request_awknowledgement(id)
-      Message.set_as_awknowledged(id)
+    @options = {port: 9000, host: '127.0.0.1', listen_for_awks: true, poll_interval: 5, awk_address: '/awk_id'}
+    def self.configure!(options = {})
+      @options.merge!(options || {})
     end
 
     def self.start
       OSC.run do
-        # TODO configure
-        server = Server.new(port,host)
-        server.add_pattern "/awk_id" do |*args|
-          puts "received awk for request #{args[1]}"
-          handle_request_awknowledgement(args[1])
+        server = OSC::Server.new(@options[:port],@options[:host])
+        if @options[:listen_for_awks] 
+          server.add_pattern @options[:awk_address] do |*args|
+            handle_awknowledgement(args[1])
+          end
         end
 
-        timer = EventMachine::PeriodicTimer.new(5) do 
-          puts "checking for new queued requests"
+        timer = EventMachine::PeriodicTimer.new(@options[:poll_interval]) do 
           begin
-            process_queued_requests
+            process_queued_messages
           rescue StandardError => e
+            # TODO logging
             puts e.backtrace
           end
         end
       end
     end
+
+    private
+      def self.process_queued_messages
+        Message.get_queued_messages.each{|m| m.send!}
+      end
+
+      def self.handle_awknowledgement(id)
+        Message.set_as_awknowledged(id)
+      end
   end
 end

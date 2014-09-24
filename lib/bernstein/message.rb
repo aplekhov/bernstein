@@ -54,7 +54,7 @@ module Bernstein
 
     def self.parse_message_string message_string
       message_array = message_string.split
-      [message_array.shift, message_array]
+      [message_array.shift, message_array.map{|arg| arg.to_f}]
     end
   end
 end

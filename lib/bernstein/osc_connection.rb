@@ -13,8 +13,8 @@ module Bernstein
 
     def self.send_message(message)
       osc_message = OSC::Message.new(message.address,*message.args)
-      osc_message = Bundle.new(nil, osc_message, OSC::Message.new('/message_id', message.id)) if @options[:send_message_ids]
-      connection.send osc_message
+      osc_message = OSC::Bundle.new(nil, osc_message, OSC::Message.new('/message_id', message.id)) if @options[:send_message_ids]
+      @connection.send osc_message
     end
   end
 end

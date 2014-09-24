@@ -75,7 +75,7 @@ describe Bernstein::Message do
       args = ['1', '2', '3']
       message = Bernstein::Message.build("#{address} #{args.join(' ')}")
       expect(message.address).to eq(address)
-      expect(message.args).to eq(args)
+      expect(message.args).to eq(args.map{|a| a.to_f})
     end
 
     it "should return a unique id" do
