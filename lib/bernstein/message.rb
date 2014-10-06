@@ -1,17 +1,39 @@
+require 'ruby-osc'
+require 'json'
+
 module Bernstein
   class Message
-    attr_reader :id, :address, :args
+    attr_reader :id, :osc_message
     @@persister = RedisQueue
     @@osc_connection = OSCConnection
 
-    def initialize options = {}
-      @id, @address, @args = options[:id], options[:address], options[:args]
-      @is_saved = options[:is_saved] || false
+    # OSC message could be a bundle
+    def initialize(osc_message, id = nil)
+      @osc_message = osc_message
+      @id = id || new_id
+      @is_saved = false
     end
 
-    def self.build message_string
+    def self.build(address = '', *args)
+      Message.new(OSC::Message.new(address, *args))
+    end
+
+    # only supports float arguments
+    def self.build_from_string(message_string)
       address, args = parse_message_string(message_string)
-      Message.new id: new_id, address: address, args: args
+      Message.new(OSC::Message.new(address, *args))
+    end
+
+    def self.deserialize(serialized_msg)
+      serialized_msg = serialized_msg.split(',')
+      id = serialized_msg.shift
+      osc_message = OSC.decode(serialized_msg.join(','))
+      Message.new osc_message, id
+    end
+
+    def serialize
+      [@id,@osc_message.encode].join(',')
+      #{:id => @id, :data => @osc_message.encode}.to_json
     end
 
     def self.get_status(id)
@@ -43,12 +65,12 @@ module Bernstein
     end
 
     def ==(other)
-      (self.id == other.id) && (self.address == other.address) &&
-        (self.args == other.args)
+      (self.class == other.class) && (self.osc_message == other.osc_message) &&
+        (self.id == other.id)
     end
     
     protected
-    def self.new_id
+    def new_id
       Time.now.to_f.to_s.delete('.')
     end
 

@@ -6,7 +6,7 @@ end
 
 describe Bernstein::RedisQueue do
   before(:each) do
-    @message = Bernstein::Message.build("/test/3 1 2.55 4")
+    @message = Bernstein::Message.build_from_string("/test/3 1 2.55 4")
   end
 
   describe "initialization and configuration" do
@@ -51,7 +51,7 @@ describe Bernstein::RedisQueue do
       Bernstein::RedisQueue.add(@message)
       expect(Bernstein::RedisQueue.queued_messages).to include(@message)
       sleep @key_expiry + 1
-      @another_message = Bernstein::Message.build("/test/current 5 6 7")
+      @another_message = Bernstein::Message.build_from_string("/test/current 5 6 7")
       Bernstein::RedisQueue.add(@another_message)
       queued_messages = Bernstein::RedisQueue.queued_messages
       queue_set = redis_connection.smembers Bernstein::RedisQueue::QUEUE_SET
@@ -89,9 +89,9 @@ describe Bernstein::RedisQueue do
   describe "getting queued messages" do
     it "should pull queued messages and deserialize them" do
       Bernstein::RedisQueue.clear
-      message = Bernstein::Message.build("/test/1 one")
-      message2 = Bernstein::Message.build("/test/2 one two")
-      message3 = Bernstein::Message.build("/test/3 one two three")
+      message = Bernstein::Message.build_from_string("/test/1 one")
+      message2 = Bernstein::Message.build_from_string("/test/2 one two")
+      message3 = Bernstein::Message.build_from_string("/test/3 one two three")
       messages = [message, message2, message3]
       messages.each{|m| Bernstein::RedisQueue.add(m)}
       expect(Bernstein::RedisQueue.queued_messages.sort{|a,b| a.id <=> b.id}).to eq(messages.sort{|a,b| a.id <=> b.id})

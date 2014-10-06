@@ -1,6 +1,5 @@
 require 'redis'
 require 'redis-namespace'
-require 'json'
 
 module Bernstein
   class RedisQueue
@@ -16,7 +15,7 @@ module Bernstein
     def self.add(message)
       @redis.multi do
         @redis.sadd QUEUE_SET, message.id
-        @redis.setex message.id, @options[:key_expiry], {'address' => message.address, 'args' => message.args, 'id' => message.id}.to_json
+        @redis.setex message.id, @options[:key_expiry], message.serialize
         @redis.setex status_key(message.id), @options[:key_expiry], STATES[:queued]
       end
     end
@@ -32,8 +31,7 @@ module Bernstein
       unless queued_message_ids.empty?
         messages = @redis.mget(queued_message_ids).compact
         unless messages.empty?
-          messages.map!{|r| JSON.parse(r)}
-          messages.map!{|r| Message.new(id: r['id'], address: r['address'], args: r['args'])} 
+          messages.map!{|m| Message.deserialize(m)} 
         end
         if messages.size < queued_message_ids.size
           clean_up_queue(queued_message_ids - messages.map{|m| m.id})

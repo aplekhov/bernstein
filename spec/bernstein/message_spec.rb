@@ -1,4 +1,5 @@
 require 'helper'
+require 'ruby-osc'
 
 class DummyPersister
   attr_accessor :queue, :sent_messages, :message_states
@@ -66,43 +67,68 @@ describe Bernstein::Message do
 
   before(:each) do
     @mock_queue.clear
-    @message = Bernstein::Message.build("/test 1 2 3")  
+    @message = Bernstein::Message.build_from_string("/test 1 2 3")  
   end
 
   describe "building a new message" do
-    it "should be able to be built from a message string" do
+    it "should be able to be built from a message string and turn all parameters into floats" do
       address = "/test/this/out"
-      args = ['1', '2', '3']
-      message = Bernstein::Message.build("#{address} #{args.join(' ')}")
-      expect(message.address).to eq(address)
-      expect(message.args).to eq(args.map{|a| a.to_f})
+      args = ['1', '2', '3.5']
+      message = Bernstein::Message.build_from_string("#{address} #{args.join(' ')}")
+      expect(message.osc_message.address).to eq(address)
+      expect(message.osc_message.args).to eq(args.map{|a| a.to_f})
+    end
+
+    it "should be able to built from address and args, preserving types" do
+      address = "/test/this/out"
+      args = [5, 'pizza', 9.9, 2.0]
+      message = Bernstein::Message.build(address,*args)
+      expect(message.osc_message.address).to eq(address)
+      expect(message.osc_message.args).to eq(args)
+    end
+
+    it "should be able to be built from an already built osc message or bundle" do
+      msg = OSC::Message.new('/hi/msg','2',4)
+      bundle = OSC::Bundle.new(Time.now + 2, OSC::Message.new('/exit'))
+      message1 = Bernstein::Message.new(msg)
+      message2 = Bernstein::Message.new(bundle)
+      expect(message1.osc_message).to eq(msg)
+      expect(message2.osc_message).to eq(bundle)
     end
 
     it "should return a unique id" do
       messages = []
-      5.times {|i| messages << Bernstein::Message.build("/test #{i}")}
+      5.times {|i| messages << Bernstein::Message.build_from_string("/test #{i}")}
       messages.each do |message| 
         expect(message.id).to_not be_nil
         (messages - [message]).each{|other_message| expect(other_message.id).to_not eq(message.id)}
       end
     end
 
-    it "should be able to be built from an address string and args array" do
+    it "should be able to be built with a set id" do
       address = "/test/this/out"
       args = ['1', '2', '3']
       id = "456"
-      message = Bernstein::Message.new id: id, address: address, args: args
+      osc_msg = OSC::Message.new(address, *args)
+      message = Bernstein::Message.new osc_msg, id
       expect(message.id).to eq(id)
-      expect(message.address).to eq(address)
-      expect(message.args).to eq(args)
+      expect(message.osc_message.address).to eq(address)
+      expect(message.osc_message.args).to eq(args)
     end
 
     it "should be equal to another message with the same id, args and address" do
-      message1 = Bernstein::Message.build("/test 1 2 3") 
-      message2 = Bernstein::Message.new(id: message1.id, address: message1.address, args: message1.args)
-      message3 = Bernstein::Message.new(id: '123', address: message1.address, args: message1.args)
+      message1 = Bernstein::Message.build_from_string("/test 1 2 3") 
+      message2 = Bernstein::Message.new(OSC::Message.new("/test", 1,2,3), message1.id)
+      message3 = Bernstein::Message.new(message2.osc_message, '999')
       expect(message1).to eq(message2)
       expect(message1).to_not eq(message3)
+    end
+  end
+
+  describe "serialization" do
+    it "should serialize and deserialize the osc message and id" do
+      serialized_msg = @message.serialize
+      expect(@message).to eq(Bernstein::Message.deserialize(serialized_message))
     end
   end
 
@@ -163,7 +189,7 @@ describe Bernstein::Message do
   describe "getting queued messages" do
     it "should return all queued messages" do
       @message.save!
-      @message2 = Bernstein::Message.build("/test/2 4 5 6")
+      @message2 = Bernstein::Message.build_from_string("/test/2 4 5 6")
       @message2.save!
       expect(Bernstein::Message.get_queued_messages).to eq([@message, @message2])
     end

@@ -15,7 +15,7 @@ describe Bernstein::OSCConnection do
   describe "sending a message" do
     it "should create a new osc message from the passed in message and call send on the client" do
       Bernstein::OSCConnection.configure! send_message_ids: false
-      message1 = Bernstein::Message.build("/test 1 2 3")
+      message1 = Bernstein::Message.build_from_string("/test 1 2 3")
       expect(OSC::Message).to receive(:new).with('/test', 1.0,2.0,3.0).and_return("mock")
       expect(current_client).to receive(:send).with("mock")
       Bernstein::OSCConnection.send_message(message1)
@@ -23,7 +23,7 @@ describe Bernstein::OSCConnection do
 
     it "should send a bundle when send_message_ids is set to true" do
       Bernstein::OSCConnection.configure! send_message_ids: true
-      message1 = Bernstein::Message.build("/test 1 2 3")
+      message1 = Bernstein::Message.build_from_string("/test 1 2 3")
       expect(current_client).to receive(:send).with(kind_of(OSC::Bundle))
       Bernstein::OSCConnection.send_message(message1)
     end

@@ -3,8 +3,8 @@ module Bernstein
     ##
     # Example: Bernstein::Client.send_message("/synths/4/filter_cutoff .5")
     #
-    def self.send_message(message)
-      msg = Message.build(message)
+    def self.send_message(message_string)
+      msg = Message.build_from_string(message_string)
       msg.save!
       msg.id
     end
