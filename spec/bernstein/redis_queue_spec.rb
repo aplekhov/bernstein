@@ -13,9 +13,8 @@ describe Bernstein::RedisQueue do
     after(:all){Bernstein::RedisQueue.configure!({redis:{}})}
 
     it "should pass redis options to initialize a new redis connection" do
-      pending "fixing some rspec weirdness"
       redis_opts = {host: "10.0.1.1", port: 6380, db: 15}
-      expect(Redis).to receive(:new)
+      expect(Redis).to receive(:new).with(redis_opts).and_call_original
       Bernstein::RedisQueue.configure!({key_expiry: 600, redis: redis_opts})
     end
 
@@ -25,11 +24,10 @@ describe Bernstein::RedisQueue do
   end
 
   describe "adding a new message" do
-    it "should serialize the message to json and add it to the proper sets" do
+    it "should serialize the message and add it to the proper sets" do
       Bernstein::RedisQueue.add(@message)
-      data = JSON.parse(redis_connection.get(@message.id))
-      expect(data['address']).to eq('/test/3')
-      expect(data['args']).to eq([1.0, 2.55, 4])
+      data = redis_connection.get(@message.id)
+      expect(Bernstein::Message.deserialize(data)).to eq(@message)
       expect(redis_connection.smembers(Bernstein::RedisQueue::QUEUE_SET)).to include(@message.id)
     end
   end

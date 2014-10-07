@@ -7,7 +7,6 @@ module Bernstein
     @@persister = RedisQueue
     @@osc_connection = OSCConnection
 
-    # OSC message could be a bundle
     def initialize(osc_message, id = nil)
       @osc_message = osc_message
       @id = id || new_id
@@ -25,15 +24,12 @@ module Bernstein
     end
 
     def self.deserialize(serialized_msg)
-      serialized_msg = serialized_msg.split(',')
-      id = serialized_msg.shift
-      osc_message = OSC.decode(serialized_msg.join(','))
-      Message.new osc_message, id
+      data = JSON.parse(serialized_msg)
+      Message.new OSC::Message.new(data['address'], *data['args']), data['id']
     end
 
     def serialize
-      [@id,@osc_message.encode].join(',')
-      #{:id => @id, :data => @osc_message.encode}.to_json
+      {'id' => @id, 'address' => @osc_message.address, 'args' => @osc_message.args}.to_json
     end
 
     def self.get_status(id)

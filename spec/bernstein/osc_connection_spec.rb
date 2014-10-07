@@ -15,8 +15,8 @@ describe Bernstein::OSCConnection do
   describe "sending a message" do
     it "should create a new osc message from the passed in message and call send on the client" do
       Bernstein::OSCConnection.configure! send_message_ids: false
-      message1 = Bernstein::Message.build_from_string("/test 1 2 3")
       expect(OSC::Message).to receive(:new).with('/test', 1.0,2.0,3.0).and_return("mock")
+      message1 = Bernstein::Message.build_from_string("/test 1 2 3")
       expect(current_client).to receive(:send).with("mock")
       Bernstein::OSCConnection.send_message(message1)
     end

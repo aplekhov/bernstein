@@ -87,13 +87,10 @@ describe Bernstein::Message do
       expect(message.osc_message.args).to eq(args)
     end
 
-    it "should be able to be built from an already built osc message or bundle" do
+    it "should be able to be built from an already built osc message" do
       msg = OSC::Message.new('/hi/msg','2',4)
-      bundle = OSC::Bundle.new(Time.now + 2, OSC::Message.new('/exit'))
       message1 = Bernstein::Message.new(msg)
-      message2 = Bernstein::Message.new(bundle)
       expect(message1.osc_message).to eq(msg)
-      expect(message2.osc_message).to eq(bundle)
     end
 
     it "should return a unique id" do
@@ -127,8 +124,15 @@ describe Bernstein::Message do
 
   describe "serialization" do
     it "should serialize and deserialize the osc message and id" do
+      @message = Bernstein::Message.build_from_string("/test 1 2 3.2345")  
       serialized_msg = @message.serialize
-      expect(@message).to eq(Bernstein::Message.deserialize(serialized_message))
+      expect(@message).to eq(Bernstein::Message.deserialize(serialized_msg))
+    end
+
+    it "should handle float, integer and string arguments" do
+      @message = Bernstein::Message.build("/test", 3.4567, 10, 'a_string')
+      serialized_msg = @message.serialize
+      expect(@message).to eq(Bernstein::Message.deserialize(serialized_msg))
     end
   end
 
