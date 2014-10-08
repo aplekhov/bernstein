@@ -61,8 +61,15 @@ describe Bernstein::Message do
   before(:all) do
     @mock_queue = DummyPersister.new
     @mock_osc_connection = DummyOSCConnection.new
+    @real_persister = Bernstein::Message.class_variable_get('@@persister')
+    @real_osc_connection = Bernstein::Message.class_variable_get('@@osc_connection')
     Bernstein::Message.class_variable_set('@@persister', @mock_queue)
     Bernstein::Message.class_variable_set('@@osc_connection', @mock_osc_connection)
+  end
+
+  after(:all) do
+    Bernstein::Message.class_variable_set('@@persister', @real_persister)
+    Bernstein::Message.class_variable_set('@@osc_connection', @real_osc_connection)
   end
 
   before(:each) do

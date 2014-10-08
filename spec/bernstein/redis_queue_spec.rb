@@ -87,9 +87,9 @@ describe Bernstein::RedisQueue do
   describe "getting queued messages" do
     it "should pull queued messages and deserialize them" do
       Bernstein::RedisQueue.clear
-      message = Bernstein::Message.build_from_string("/test/1 one")
-      message2 = Bernstein::Message.build_from_string("/test/2 one two")
-      message3 = Bernstein::Message.build_from_string("/test/3 one two three")
+      message = Bernstein::Message.build_from_string("/test/1 1")
+      message2 = Bernstein::Message.build_from_string("/test/2 1 2")
+      message3 = Bernstein::Message.build_from_string("/test/3 1 2 3")
       messages = [message, message2, message3]
       messages.each{|m| Bernstein::RedisQueue.add(m)}
       expect(Bernstein::RedisQueue.queued_messages.sort{|a,b| a.id <=> b.id}).to eq(messages.sort{|a,b| a.id <=> b.id})

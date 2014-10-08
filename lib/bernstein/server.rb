@@ -10,22 +10,23 @@ module Bernstein
 
     def self.start
       OSC.run do
-        server = OSC::Server.new(@options[:port],@options[:host])
+        @server = OSC::Server.new(@options[:port],@options[:host])
         if @options[:listen_for_awks] 
-          server.add_pattern @options[:awk_address] do |*args|
+          @server.add_pattern @options[:awk_address] do |*args|
             handle_awknowledgement(args[1])
           end
         end
 
-        timer = EventMachine::PeriodicTimer.new(@options[:poll_interval]) do 
-          begin
-            process_queued_messages
-          rescue StandardError => e
-            # TODO logging
-            puts e.backtrace
-          end
+        @timer = EventMachine::PeriodicTimer.new(@options[:poll_interval]) do 
+          process_queued_messages
         end
+        yield
       end
+    end
+
+    def self.stop
+      @server.stop unless @server.nil?
+      @timer.cancel unless @timer.nil?
     end
 
     private
