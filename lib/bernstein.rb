@@ -4,6 +4,7 @@ require 'bernstein/osc_connection'
 require 'bernstein/message'
 require 'bernstein/client'
 require 'bernstein/server'
+require 'bernstein/version'
 require 'yaml'
 
 module Bernstein
