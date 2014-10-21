@@ -20,7 +20,7 @@ module Bernstein
         @timer = EventMachine::PeriodicTimer.new(@options[:poll_interval]) do 
           process_queued_messages
         end
-        yield
+        yield if block_given?
       end
     end
 
