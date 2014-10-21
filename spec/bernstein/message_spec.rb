@@ -16,23 +16,23 @@ class DummyPersister
     @queue
   end
 
-  def mark_as_sent(id)
+  def dequeue(id, mark_as_sent = false)
     message = @queue.find{|m| m.id == id}
     if !message.nil?
-      @message_states[message] = :sent
+      @message_states[message] = (mark_as_sent ? :sent : :sending)
       @sent_messages << message
       @queue.delete(message)
     end
   end
 
-  def mark_as_awknowledged(id)
+  def mark_as_sent(id)
     message = @message_states.keys.find{|m| m.id == id}
-    @message_states[message] = :awked unless message.nil?
+    @message_states[message] = :sent unless message.nil?
   end
 
   def status(id)
     message = @message_states.keys.find{|m| m.id == id}
-    Bernstein::Persistence::STATES[@message_states[message]]
+    Bernstein::States::STATES[@message_states[message]]
   end
 
   def clear
@@ -58,6 +58,8 @@ class DummyOSCConnection
 end
 
 describe Bernstein::Message do
+  subject { Bernstein::Message }
+
   before(:all) do
     @mock_queue = DummyPersister.new
     @mock_osc_connection = DummyOSCConnection.new
@@ -81,7 +83,7 @@ describe Bernstein::Message do
     it "should be able to be built from a message string and turn all parameters into floats" do
       address = "/test/this/out"
       args = ['1', '2', '3.5']
-      message = Bernstein::Message.build_from_string("#{address} #{args.join(' ')}")
+      message = subject.build_from_string("#{address} #{args.join(' ')}")
       expect(message.osc_message.address).to eq(address)
       expect(message.osc_message.args).to eq(args.map{|a| a.to_f})
     end
@@ -89,20 +91,20 @@ describe Bernstein::Message do
     it "should be able to built from address and args, preserving types" do
       address = "/test/this/out"
       args = [5, 'pizza', 9.9, 2.0]
-      message = Bernstein::Message.build(address,*args)
+      message = subject.build(address,*args)
       expect(message.osc_message.address).to eq(address)
       expect(message.osc_message.args).to eq(args)
     end
 
     it "should be able to be built from an already built osc message" do
       msg = OSC::Message.new('/hi/msg','2',4)
-      message1 = Bernstein::Message.new(msg)
+      message1 = subject.new(msg)
       expect(message1.osc_message).to eq(msg)
     end
 
     it "should return a unique id" do
       messages = []
-      5.times {|i| messages << Bernstein::Message.build_from_string("/test #{i}")}
+      5.times {|i| messages << subject.build_from_string("/test #{i}")}
       messages.each do |message| 
         expect(message.id).to_not be_nil
         (messages - [message]).each{|other_message| expect(other_message.id).to_not eq(message.id)}
@@ -114,16 +116,16 @@ describe Bernstein::Message do
       args = ['1', '2', '3']
       id = "456"
       osc_msg = OSC::Message.new(address, *args)
-      message = Bernstein::Message.new osc_msg, id
+      message = subject.new osc_msg, id
       expect(message.id).to eq(id)
       expect(message.osc_message.address).to eq(address)
       expect(message.osc_message.args).to eq(args)
     end
 
     it "should be equal to another message with the same id, args and address" do
-      message1 = Bernstein::Message.build_from_string("/test 1 2 3") 
-      message2 = Bernstein::Message.new(OSC::Message.new("/test", 1,2,3), message1.id)
-      message3 = Bernstein::Message.new(message2.osc_message, '999')
+      message1 = subject.build_from_string("/test 1 2 3") 
+      message2 = subject.new(OSC::Message.new("/test", 1,2,3), message1.id)
+      message3 = subject.new(message2.osc_message, '999')
       expect(message1).to eq(message2)
       expect(message1).to_not eq(message3)
     end
@@ -131,15 +133,15 @@ describe Bernstein::Message do
 
   describe "serialization" do
     it "should serialize and deserialize the osc message and id" do
-      @message = Bernstein::Message.build_from_string("/test 1 2 3.2345")  
+      @message = subject.build_from_string("/test 1 2 3.2345")  
       serialized_msg = @message.serialize
-      expect(@message).to eq(Bernstein::Message.deserialize(serialized_msg))
+      expect(@message).to eq(subject.deserialize(serialized_msg))
     end
 
     it "should handle float, integer and string arguments" do
-      @message = Bernstein::Message.build("/test", 3.4567, 10, 'a_string')
+      @message = subject.build("/test", 3.4567, 10, 'a_string')
       serialized_msg = @message.serialize
-      expect(@message).to eq(Bernstein::Message.deserialize(serialized_msg))
+      expect(@message).to eq(subject.deserialize(serialized_msg))
     end
   end
 
@@ -160,11 +162,11 @@ describe Bernstein::Message do
       @message.save!
     end
 
-    after(:all) do
+    after(:each) do
       @mock_osc_connection.fail_send = false
     end
 
-    it "should send the message on the OSC connection and mark as sent on the queue" do
+    it "should send the message on the OSC connection and remove from queue" do
       @message.send!
       expect(@mock_osc_connection.sent_messages).to include(@message)
       expect(@mock_queue.sent_messages).to include(@message)
@@ -175,6 +177,11 @@ describe Bernstein::Message do
       @message.send rescue
       expect(@mock_queue.sent_messages).to_not include(@message)
     end
+
+    it "should send the message and mark as sent" do
+      @message.send!(false)
+      expect_state(@message.status, :sent)
+    end
   end
 
   describe "querying status" do
@@ -183,36 +190,26 @@ describe Bernstein::Message do
     end
 
     it "should return the current status for a message object" do
-      expect(@message.status).to eq(Bernstein::Persistence::STATES[:queued])
+      expect_state(@message.status, :queued)
       @message.send!
-      expect(@message.status).to eq(Bernstein::Persistence::STATES[:sent])
-      @mock_queue.mark_as_awknowledged(@message.id)
-      expect(@message.status).to eq(Bernstein::Persistence::STATES[:awked])
+      expect_state(@message.status, :sending)
+      @mock_queue.mark_as_sent(@message.id)
+      expect_state(@message.status, :sent)
     end
 
     it "should return the current status by message id" do
-      expect(Bernstein::Message.get_status(@message.id)).to eq(Bernstein::Persistence::STATES[:queued])
-      @message.send!
-      expect(Bernstein::Message.get_status(@message.id)).to eq(Bernstein::Persistence::STATES[:sent])
+      expect_state(subject.get_status(@message.id), :queued)
+      @message.send!(false)
+      expect_state(subject.get_status(@message.id), :sent)
     end
   end
 
   describe "getting queued messages" do
     it "should return all queued messages" do
       @message.save!
-      @message2 = Bernstein::Message.build_from_string("/test/2 4 5 6")
+      @message2 = subject.build_from_string("/test/2 4 5 6")
       @message2.save!
-      expect(Bernstein::Message.get_queued_messages).to eq([@message, @message2])
-    end
-  end
-
-  describe "handling awks" do
-    it "should set the message status to awknowledged" do
-      @message.save!
-      @message.send!
-      Bernstein::Message.set_as_awknowledged(@message.id)
-      expect(Bernstein::Message.get_status(@message.id)).to eq(Bernstein::Persistence::STATES[:awked])
-      expect(@message.status).to eq(Bernstein::Persistence::STATES[:awked])
+      expect(subject.get_queued_messages).to eq([@message, @message2])
     end
   end
 end

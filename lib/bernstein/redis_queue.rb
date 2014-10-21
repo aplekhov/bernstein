@@ -3,7 +3,8 @@ require 'redis-namespace'
 
 module Bernstein
   class RedisQueue
-    include Persistence
+    include States
+
     QUEUE_SET = "queued_messages"
     @options = {key_expiry: 300, redis: {}}
 
@@ -21,8 +22,7 @@ module Bernstein
     end
 
     def self.status(id)
-      # returns status of request by id
-      (@redis.get status_key(id)) || STATES[:not_yet_queued]
+      @redis.get(status_key(id)) || STATES[:not_yet_queued]
     end
 
     def self.queued_messages
@@ -44,31 +44,37 @@ module Bernstein
       @redis.del QUEUE_SET
     end
 
+    def self.dequeue(id, mark_as_sent = false)
+      remove_and_change_status(id, (mark_as_sent ? STATES[:sent] : STATES[:sending]))
+    end
+
     def self.mark_as_sent(id)
-      update_status(id, STATES[:sent]) do
-        @redis.srem QUEUE_SET, id
-      end
-      @redis.del id
+      set_status(id, STATES[:sent])
     end
 
-    def self.mark_as_awknowledged(id)
-      update_status id, STATES[:awked]
-    end
-
-    protected
+    private
     def self.status_key(id)
       "#{id}_status"
     end
 
-    def self.update_status(id, status)
+    def self.remove_and_change_status(id, status)
+      remove(id){ set_status(id, status) }
+    end
+
+    def self.set_status(id, status)
+      @redis.set status_key(id), status
+    end
+
+    def self.remove(id)
       if block_given?
         @redis.multi do
+          @redis.srem QUEUE_SET, id
           yield
-          @redis.set status_key(id), status
         end
       else
-        @redis.set status_key(id), status
+        @redis.srem QUEUE_SET, id
       end
+      @redis.del id
     end
 
     def self.clean_up_queue(ids_to_remove)

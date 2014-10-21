@@ -4,7 +4,13 @@ def redis_connection
   Bernstein::RedisQueue.instance_variable_get('@redis')
 end
 
+def redis_queue
+  redis_connection.smembers(Bernstein::RedisQueue::QUEUE_SET)
+end
+
 describe Bernstein::RedisQueue do
+  subject { Bernstein::RedisQueue }
+
   before(:each) do
     @message = Bernstein::Message.build_from_string("/test/3 1 2.55 4")
   end
@@ -25,10 +31,10 @@ describe Bernstein::RedisQueue do
 
   describe "adding a new message" do
     it "should serialize the message and add it to the proper sets" do
-      Bernstein::RedisQueue.add(@message)
+      subject.add(@message)
       data = redis_connection.get(@message.id)
       expect(Bernstein::Message.deserialize(data)).to eq(@message)
-      expect(redis_connection.smembers(Bernstein::RedisQueue::QUEUE_SET)).to include(@message.id)
+      expect(redis_queue).to include(@message.id)
     end
   end
 
@@ -39,20 +45,20 @@ describe Bernstein::RedisQueue do
     end
 
     it "should expire messages based on set expiry times" do
-      Bernstein::RedisQueue.add(@message)
+      subject.add(@message)
       expect(redis_connection.get(@message.id)).to_not be_nil
       sleep @key_expiry + 1
       expect(redis_connection.get(@message.id)).to be_nil
     end
 
     it "should clean up request_queue of unhandled expired messages" do
-      Bernstein::RedisQueue.add(@message)
-      expect(Bernstein::RedisQueue.queued_messages).to include(@message)
+      subject.add(@message)
+      expect(subject.queued_messages).to include(@message)
       sleep @key_expiry + 1
       @another_message = Bernstein::Message.build_from_string("/test/current 5 6 7")
-      Bernstein::RedisQueue.add(@another_message)
-      queued_messages = Bernstein::RedisQueue.queued_messages
-      queue_set = redis_connection.smembers Bernstein::RedisQueue::QUEUE_SET
+      subject.add(@another_message)
+      queued_messages = subject.queued_messages
+      queue_set = redis_queue
       expect(queued_messages).to_not include(@message)
       expect(queued_messages).to include(@another_message)
       expect(queue_set).to_not include(@message.id)
@@ -61,38 +67,45 @@ describe Bernstein::RedisQueue do
   end
 
   describe "marking and requesting status" do
-    it "should return not yet queued status for unknown messages" do
-      expect(Bernstein::RedisQueue.status('123456')).to eq(Bernstein::Persistence::STATES[:not_yet_queued])
+    it "should return not yet sent queued for unknown messages" do
+      expect_state(subject.status('123456'), :not_yet_queued)
     end
 
     it "should set new messages' status to queued" do
-      Bernstein::RedisQueue.add(@message)
-      expect(Bernstein::RedisQueue.status(@message.id)).to eq(Bernstein::Persistence::STATES[:queued])
+      subject.add(@message)
+      expect_state(subject.status(@message.id), :queued)
     end
 
-    it "should mark and store awknowledged message states" do
-      Bernstein::RedisQueue.add(@message)
-      Bernstein::RedisQueue.mark_as_awknowledged(@message.id)
-      expect(Bernstein::RedisQueue.status(@message.id)).to eq(Bernstein::Persistence::STATES[:awked])
+    it "should mark a message as sent" do
+      subject.add(@message)
+      subject.mark_as_sent(@message.id)
+      expect_state(subject.status(@message.id), :sent)
     end
 
-    it "should mark sent messages and remove them from queue" do
-      Bernstein::RedisQueue.add(@message)
-      Bernstein::RedisQueue.mark_as_sent(@message.id)
-      expect(Bernstein::RedisQueue.status(@message.id)).to eq(Bernstein::Persistence::STATES[:sent])
-      expect(redis_connection.smembers(Bernstein::RedisQueue::QUEUE_SET)).to_not include(@message.id)
+    it "should dequeue messages and set them to sending state by default" do
+      subject.add(@message)
+      subject.dequeue(@message.id)
+      expect_state(subject.status(@message.id), :sending)
+      expect(redis_queue).to_not include(@message.id)
+    end
+
+    it "should dequeue messages and set their state straight to sent" do
+      subject.add(@message)
+      subject.dequeue(@message.id, true)
+      expect_state(subject.status(@message.id), :sent)
+      expect(redis_queue).to_not include(@message.id)
     end
   end
   
   describe "getting queued messages" do
     it "should pull queued messages and deserialize them" do
-      Bernstein::RedisQueue.clear
+      subject.clear
       message = Bernstein::Message.build_from_string("/test/1 1")
       message2 = Bernstein::Message.build_from_string("/test/2 1 2")
       message3 = Bernstein::Message.build_from_string("/test/3 1 2 3")
       messages = [message, message2, message3]
-      messages.each{|m| Bernstein::RedisQueue.add(m)}
-      expect(Bernstein::RedisQueue.queued_messages.sort{|a,b| a.id <=> b.id}).to eq(messages.sort{|a,b| a.id <=> b.id})
+      messages.each{|m| subject.add(m)}
+      expect(subject.queued_messages.sort{|a,b| a.id <=> b.id}).to eq(messages.sort{|a,b| a.id <=> b.id})
     end
   end
 end

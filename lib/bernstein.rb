@@ -1,6 +1,6 @@
 require 'rubygems'
 
-require 'bernstein/persistence'
+require 'bernstein/states'
 require 'bernstein/redis_queue'
 require 'bernstein/osc_connection'
 require 'bernstein/message'

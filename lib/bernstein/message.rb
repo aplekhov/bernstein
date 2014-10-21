@@ -44,8 +44,8 @@ module Bernstein
       @@persister.queued_messages
     end
 
-    def self.set_as_awknowledged(id)
-      @@persister.mark_as_awknowledged(id)
+    def self.set_as_sent!(id)
+      @@persister.mark_as_sent(id)
     end
 
     def save!
@@ -55,9 +55,9 @@ module Bernstein
       end
     end
 
-    def send!
+    def send!(expect_awk = true)
       @@osc_connection.send_message self
-      @@persister.mark_as_sent @id
+      @@persister.dequeue @id, !expect_awk
     end
 
     def ==(other)

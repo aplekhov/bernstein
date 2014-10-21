@@ -24,13 +24,13 @@ describe Bernstein::Server do
       @message2 = Bernstein::Client.send_message_by_string("/test/2 1 2")
       @message3 = Bernstein::Client.send_message_by_string("/test/3 1 2 3")
       [@message, @message2, @message3].each do |message_id|
-        expect(Bernstein::Client.message_status(message_id)).to eq(Bernstein::Persistence::STATES[:queued])
+        expect_state(Bernstein::Client.message_status(message_id), :queued)
       end
     end
 
 
     it "should call send on all queued messages" do
-      Bernstein::Server.configure!({poll_interval:1})
+      Bernstein::Server.configure!({poll_interval:1, require_awks:true})
       Bernstein::Server.start do
         EventMachine.add_timer 4 do
           Bernstein::Server.stop
@@ -38,24 +38,27 @@ describe Bernstein::Server do
         end
       end
       [@message, @message2, @message3].each do |message_id|
-        expect(Bernstein::Client.message_status(message_id)).to eq(Bernstein::Persistence::STATES[:sent])
+        expect_state(Bernstein::Client.message_status(message_id), :sending)
       end
     end
   end
 
-  describe "handling awknowledgements" do
+  describe "awks" do
     before(:each) do
       connection = Bernstein::Message.class_variable_get('@@osc_connection')
       allow(connection).to receive(:send_message)
       Bernstein::RedisQueue.clear
       @message_id = Bernstein::Client.send_message_by_string("/test/1 1")
-      expect(Bernstein::Client.message_status(@message_id)).to eq(Bernstein::Persistence::STATES[:queued])
+      expect_state(Bernstein::Client.message_status(@message_id), :queued)
     end
 
-    it "should listen for awks and set messages with corresponding ids to awknowledged" do
-      Bernstein::Server.configure!({port: 9090, host: '127.0.0.1'})
+    it "should listen for awks and set messages with corresponding ids to sent if configured" do
+      Bernstein::Server.configure!({port: 9090, host: '127.0.0.1', poll_interval: 1, require_awks: true})
       Bernstein::Server.start do
         client = OSC::Client.new 9090
+        EventMachine.add_timer 2 do
+          expect_state(Bernstein::Client.message_status(@message_id), :sending)
+        end
         EventMachine.add_timer 3 do
           client.send OSC::Message.new('/awk_id', @message_id)
         end
@@ -64,7 +67,25 @@ describe Bernstein::Server do
           EventMachine.stop_event_loop
         end
       end
-      expect(Bernstein::Client.message_status(@message_id)).to eq(Bernstein::Persistence::STATES[:awked])
+      expect_state(Bernstein::Client.message_status(@message_id), :sent)
+    end
+
+    it "should not listen for awks and set messages directly to sent if configured" do
+      Bernstein::Server.configure!({port: 9090, host: '127.0.0.1', require_awks: false, poll_interval: 1})
+      Bernstein::Server.start do
+        client = OSC::Client.new 9090
+        EventMachine.add_timer 2 do
+          expect_state(Bernstein::Client.message_status(@message_id), :sent)
+        end
+        EventMachine.add_timer 3 do
+          client.send OSC::Message.new('/awk_id', @message_id)
+        end
+        EventMachine.add_timer 4 do
+          Bernstein::Server.stop
+          EventMachine.stop_event_loop
+        end
+      end
+      expect_state(Bernstein::Client.message_status(@message_id), :sent)
     end
   end
 end

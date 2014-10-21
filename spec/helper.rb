@@ -7,3 +7,9 @@ RSpec.configure do |c|
 end
 
 Bernstein.configure!
+
+include Bernstein::States
+
+def expect_state(something, state)
+  expect(something).to eq(STATES[state])
+end
