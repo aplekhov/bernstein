@@ -3,14 +3,24 @@
 require 'bernstein'
 require 'daemons'
 
+#options = {
+#  :backtrace  => true,
+#  :ontop      => true,
+#  :log_output => true,
+#}
+
+working_directory = Dir.pwd
 config_opt_index = ARGV.find_index('-c')
 if ARGV[0] == "start" && config_opt_index.nil?
   puts "Usage: bundle exec bernstein [start|stop|restart] -- -c <bernstein yaml file>"
   exit
 else
-  Bernstein.configure_from_yaml!(ARGV[config_opt_index + 1])
+  init_proc = Proc.new do
+    Bernstein.configure_from_yaml!(File.join( working_directory, ARGV[config_opt_index + 1]))
+  end
 end
 
 Daemons.run_proc('bernstein') do
+  init_proc.call
   Bernstein::Server.start
 end
