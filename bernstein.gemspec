@@ -6,9 +6,8 @@ Gem::Specification.new do |gem|
   gem.email         = ["anthony.plekhov@gmail.com"]
   gem.description   = gem.summary = "Ruby OSC message queue"
   gem.license       = "MIT"
-
   gem.executables   = ['bernstein']
-  gem.files         = `git ls-files'`.split("\n")
+  gem.files         = `git ls-files`.split("\n")
   gem.test_files    = `git ls-files -- spec/*`.split("\n")
   gem.name          = "bernstein"
   gem.require_paths = ["lib"]
