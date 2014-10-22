@@ -56,7 +56,7 @@ module Bernstein
     end
 
     def send!(expect_awk = true)
-      @@osc_connection.send_message self
+      @@osc_connection.send_message self, expect_awk
       @@persister.dequeue @id, !expect_awk
     end
 

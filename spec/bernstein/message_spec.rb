@@ -43,16 +43,17 @@ class DummyPersister
 end
 
 class DummyOSCConnection
-  attr_accessor :fail_send, :sent_messages
+  attr_accessor :fail_send, :sent_messages, :sent_ids
   def initialize
-    @fail_send, @sent_messages = false, []
+    @fail_send, @sent_messages, @sent_ids = false, [], []
   end
 
-  def send_message message
+  def send_message message, with_message_id = true
     if @fail_send
       throw "something went wrong"
     else
       @sent_messages << message
+      @sent_ids << message.id if with_message_id
     end
   end
 end
@@ -166,9 +167,10 @@ describe Bernstein::Message do
       @mock_osc_connection.fail_send = false
     end
 
-    it "should send the message on the OSC connection and remove from queue" do
+    it "should send the message and message id on the OSC connection and remove from queue" do
       @message.send!
       expect(@mock_osc_connection.sent_messages).to include(@message)
+      expect(@mock_osc_connection.sent_ids).to include(@message.id)
       expect(@mock_queue.sent_messages).to include(@message)
     end
 
@@ -176,11 +178,15 @@ describe Bernstein::Message do
       @mock_osc_connection.fail_send = true
       @message.send rescue
       expect(@mock_queue.sent_messages).to_not include(@message)
+      expect(@mock_osc_connection.sent_messages).to_not include(@message)
+      expect(@mock_osc_connection.sent_ids).to_not include(@message.id)
     end
 
-    it "should send the message and mark as sent" do
+    it "should send the message and mark as sent and not ask to send message id along" do
       @message.send!(false)
       expect_state(@message.status, :sent)
+      expect(@mock_osc_connection.sent_messages).to include(@message)
+      expect(@mock_osc_connection.sent_ids).to_not include(@message.id)
     end
   end
 
