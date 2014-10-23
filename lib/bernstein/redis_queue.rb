@@ -62,7 +62,7 @@ module Bernstein
     end
 
     def self.set_status(id, status)
-      @redis.set status_key(id), status
+      @redis.setex status_key(id), @options[:key_expiry], status
     end
 
     def self.remove(id)

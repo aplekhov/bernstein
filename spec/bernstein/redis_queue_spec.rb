@@ -44,11 +44,25 @@ describe Bernstein::RedisQueue do
       Bernstein::RedisQueue.configure! key_expiry: @key_expiry
     end
 
+    after(:all) do
+      Bernstein::RedisQueue.configure! key_expiry: 300
+    end
+
     it "should expire messages based on set expiry times" do
       subject.add(@message)
+      expect_state(subject.status(@message.id), :queued)
       expect(redis_connection.get(@message.id)).to_not be_nil
       sleep @key_expiry + 1
       expect(redis_connection.get(@message.id)).to be_nil
+      expect_state(subject.status(@message.id), :not_yet_queued)
+    end
+
+    it "should expire messages that have had their status changed" do
+      subject.add(@message)
+      subject.mark_as_sent(@message.id)
+      expect_state(subject.status(@message.id), :sent)
+      sleep @key_expiry + 1
+      expect_state(subject.status(@message.id), :not_yet_queued)
     end
 
     it "should clean up request_queue of unhandled expired messages" do
