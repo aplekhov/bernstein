@@ -19,6 +19,7 @@ there is an inherent latency, however that might be neglible in certain situatio
     gem install bernstein
 
 Make sure that Redis is running. Start the background poller daemon:
+    
     bernstein start -- -c bernstein.yml
 
 ```ruby
@@ -36,6 +37,10 @@ msg_id = Bernstein::Client.send_message '/synth/params', 'sinewave', 440, 556.3,
 # get status ('queued','sending','sent')
 Bernstein::Client.message_status(msg_id)
 ```
+
+Stop the background poller like this:
+
+  bernstein stop
 
 ## Default Configuration
 See bernstein.sample.yml.
