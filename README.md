@@ -40,7 +40,7 @@ Bernstein::Client.message_status(msg_id)
 
 Stop the background poller like this:
 
-  bernstein stop
+    bernstein stop
 
 ## Default Configuration
 See bernstein.sample.yml.
