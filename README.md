@@ -10,8 +10,9 @@ awk-mode that a client can use to be notified that an OSC message was delivered 
 
 While typical OSC communication is 1:1 between a client and an OSC consumer, Bernstein allows for many clients
 to control an OSC device or process.  For example, there could be a web interface adapting requests from
-many users and sending them as OSC messages to a sound generator in an installation or performance.  Due to the queuing
-there is an inherent latency, however that might be neglible in certain situations.
+many users and sending them as OSC messages to a sound generator in an installation or performance. 
+See [here](https://github.com/aplekhov/bernstein-web). 
+Due to the queuing there is an inherent latency, however that might be neglible in certain situations.
 
 
 ## Basic Usage
