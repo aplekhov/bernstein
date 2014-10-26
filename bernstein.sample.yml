@@ -1,0 +1,14 @@
+# osc config for where osc messages need to be delivered
+:osc_client:
+  :port: 9090
+  :host: '127.0.0.1'
+# osc config that bernstein listens on for awk OSC messages
+:osc_server:
+  :port: 9000
+  :host: '127.0.0.1'
+  :require_awks: true
+# redis config, accepts all Redis gem options
+:redis_queue:
+  :key_expiry: 300
+  :host: '127.0.0.1'
+  :port: 6379
